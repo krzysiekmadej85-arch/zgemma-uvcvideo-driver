@@ -1,0 +1,37 @@
+name: Compile Zgemma UVC Driver
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc-arm-linux-gnueabihf git bc libncurses5-dev libssl-dev xz-utils
+
+    - name: Download Kernel Sources
+      run: |
+        # Pobieramy konkretne wydanie jądra 4.4.35
+        wget https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.4.35.tar.xz
+        tar -xf linux-4.4.35.tar.xz
+        mv linux-4.4.35 linux
+
+    - name: Compile Module
+      run: |
+        cd linux
+        # Przygotowanie domyślnej konfiguracji dla ARM
+        make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- multi_v7_defconfig
+        # Kompilacja samego modułu UVC
+        make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- M=drivers/media/usb/uvc modules
+
+    - name: Upload Driver Artifact
+      uses: actions/artifacts@v4
+      with:
+        name: uvcvideo-driver
+        path: linux/drivers/media/usb/uvc/uvcvideo.ko
